@@ -1,0 +1,18 @@
+[package]
+name = "cargo-msfs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.91"
+cab = "0.6.0"
+cargo_metadata = "0.18.1"
+clap = { version = "4.5.20", features = ["derive"] }
+console = "0.15.8"
+directories = "5.0.1"
+indicatif = "0.17.8"
+msi = { git = "https://github.com/pepperoni505/rust-msi" } # TODO: put this back to normal msi crate after PR is merged
+reqwest = { version = "0.12.8", features = ["blocking"] }
+serde = { version = "1.0.213", features = ["derive"] }
+serde_json = "1.0.132"
+zip = "2.2.0"
