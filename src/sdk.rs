@@ -24,8 +24,8 @@ const MANIFEST_FILE: &str = "sdk.json";
 const CORE_INSTALLER_KEY: &str = "SDK Installer (Core)";
 
 // The folder in the SDK MSI to extract from
-const MSFS2020_SDK_EXTRACT_FROM: &str = ".\\MSFS SDK\\WASM\\";
-const MSFS2024_SDK_EXTRACT_FROM: &str = ".\\MSFS 2024 SDK\\WASM\\";
+const MSFS2020_SDK_EXTRACT_FROM: &str = ".\\MSFS SDK\\";
+const MSFS2024_SDK_EXTRACT_FROM: &str = ".\\MSFS 2024 SDK\\";
 
 // Local destination folder names for the downloaded SDK
 const MSFS2020_FOLDER_NAME: &str = "msfs2020";
@@ -238,7 +238,7 @@ where
         match response.read(&mut buf) {
             Ok(0) => break, // End of file
             Ok(data_size) => {
-                file.write(&buf[0..data_size])?;
+                file.write_all(&buf[0..data_size])?;
                 if let Some(callback) = download_progress_callback.as_mut() {
                     callback(file.position() + data_size as u64, content_length);
                 }

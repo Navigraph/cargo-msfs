@@ -212,10 +212,7 @@ fn main() -> Result<()> {
                     wasi_sysroot_path
                 ),
                 "-Clink-arg=-L",
-                &format!(
-                    "-Clink-arg={}\\wasi-sysroot\\lib\\wasm32-wasi",
-                    wasi_sysroot_path
-                ),
+                &format!("-Clink-arg={}\\lib\\wasm32-wasi", wasi_sysroot_path),
                 "-Clink-arg=--export-table",
                 "-Clink-arg=--allow-undefined",
                 "-Clink-arg=--export-dynamic",
@@ -228,14 +225,15 @@ fn main() -> Result<()> {
                 "-Clink-arg=--export=mchunkit_next",
                 "-Clink-arg=--export=get_pages_state",
             ];
-            let mut command = Command::new("cargo")
-                .args(&[
+            let mut _command = Command::new("cargo")
+                .args([
                     "build",
                     "--release",
                     "--target",
                     "wasm32-wasip1",
                     // "--message-format=json",
                 ])
+                .env("WASI_SYSROOT", &wasi_sysroot_path)
                 .env("MSFS_SDK", sdk_path)
                 .env("RUSTFLAGS", flags.join(" "))
                 .env("CFLAGS", format!("--sysroot={}", wasi_sysroot_path))
