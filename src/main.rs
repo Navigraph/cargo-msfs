@@ -116,6 +116,8 @@ fn print_step(step_number: u8, num_steps: u8, message: &str) {
 fn main() -> Result<()> {
     let args = Args::parse();
 
+    let mut command = None;
+
     match args.command {
         CommandType::Install => {
             let sim_version = args.msfs_version.context("msfs version is not present")?;
@@ -225,20 +227,23 @@ fn main() -> Result<()> {
                 "-Clink-arg=--export=mchunkit_next",
                 "-Clink-arg=--export=get_pages_state",
             ];
-            let mut _command = Command::new("cargo")
-                .args([
-                    "build",
-                    "--release",
-                    "--target",
-                    "wasm32-wasip1",
-                    // "--message-format=json",
-                ])
-                .env("WASI_SYSROOT", &wasi_sysroot_path)
-                .env("MSFS_SDK", sdk_path)
-                .env("RUSTFLAGS", flags.join(" "))
-                .env("CFLAGS", format!("--sysroot={}", wasi_sysroot_path))
-                // .stdout(Stdio::piped())
-                .spawn()?;
+            command = Some(
+                Command::new("cargo")
+                    .args([
+                        "build",
+                        "--release",
+                        "--target",
+                        "wasm32-wasip1",
+                        // "--message-format=json",
+                    ])
+                    .env("WASI_SYSROOT", &wasi_sysroot_path)
+                    .env("MSFS_SDK", sdk_path)
+                    .env("RUSTFLAGS", flags.join(" "))
+                    .env("CFLAGS", format!("--sysroot={}", wasi_sysroot_path))
+                    .stdout(Stdio::piped())
+                    .spawn()?,
+            );
+
             // let reader = BufReader::new(command.stdout.take().context("couldn't take stdout")?);
             // for message in Message::parse_stream(reader) {
             //     dbg!(message?);
@@ -253,6 +258,11 @@ fn main() -> Result<()> {
                 print_info(&format_version_string(SimulatorVersion::Msfs2024)?);
             }
         }
+    }
+
+    if let Some(command) = command {
+        let output = command.wait_with_output().unwrap();
+        print!("{}", String::from_utf8_lossy(&output.stdout));
     }
 
     Ok(())
