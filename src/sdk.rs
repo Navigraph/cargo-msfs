@@ -131,11 +131,20 @@ pub fn get_latest_sdk_release(version: SimulatorVersion) -> Result<GameVersion> 
 ///
 /// * `version` - The simulator version to get for
 pub fn get_latest_sdk_version(version: SimulatorVersion) -> Result<String> {
-    Ok(get_latest_sdk_release(version)?
-        .release_notes
-        .last()
-        .context("no available sdk version")?
-        .to_string())
+    // 2020's release notes are ordered from oldest to most recent, while 2024 is most recent to oldest
+    if version == SimulatorVersion::Msfs2020 {
+        Ok(get_latest_sdk_release(version)?
+            .release_notes
+            .last()
+            .context("no available sdk version")?
+            .to_string())
+    } else {
+        Ok(get_latest_sdk_release(version)?
+            .release_notes
+            .first()
+            .context("no available sdk version")?
+            .to_string())
+    }
 }
 
 /// Gets the desired path for the given simulator
