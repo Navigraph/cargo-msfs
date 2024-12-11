@@ -1,20 +1,21 @@
 use std::{
-    io::BufReader,
+    io::Cursor,
     path::PathBuf,
     process::{Command, Stdio},
     time::Duration,
 };
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use cargo_metadata::Message;
-use clap::{builder::ArgPredicate, Parser, ValueEnum};
+use clap::{Parser, ValueEnum};
 use console::style;
 use directories::ProjectDirs;
 use indicatif::{ProgressBar, ProgressStyle};
 use sdk::{
-    get_installed_sdk_version, get_latest_sdk_release, get_latest_sdk_version, get_sdk_path,
-    get_wasi_sysroot_path, install_latest_sdk, remove_sdk_version,
+    get_installed_sdk_version, get_latest_sdk_version, get_sdk_path, get_wasi_sysroot_path,
+    install_latest_sdk, remove_sdk_version,
 };
+use wasm_opt::{Feature, OptimizationOptions, Pass};
 
 /// SDK info and download utility
 mod sdk;
@@ -53,6 +54,10 @@ struct Args {
         ("command", "build"),
     ]))]
     msfs_version: Option<SimulatorVersion>,
+    #[arg(short, required_if_eq_any([
+        ("command", "build"),
+    ]))]
+    out: Option<String>,
 }
 
 /// Formats a string containing the installed SDK version of a given sim
@@ -116,11 +121,9 @@ fn print_step(step_number: u8, num_steps: u8, message: &str) {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    let mut command = None;
-
     match args.command {
         CommandType::Install => {
-            let sim_version = args.msfs_version.context("msfs version is not present")?;
+            let sim_version = args.msfs_version.unwrap();
             let installed_version = get_installed_sdk_version(sim_version)?;
             if installed_version.is_some() {
                 print_info("SDK for simulator version is already installed. To update it, run with the update command");
@@ -151,7 +154,7 @@ fn main() -> Result<()> {
             print_success("SDK installed");
         }
         CommandType::Remove => {
-            let sim_version = args.msfs_version.context("msfs version is not present")?;
+            let sim_version = args.msfs_version.unwrap();
             if get_sdk_path(sim_version)?.exists() {
                 remove_sdk_version(sim_version)?;
                 print_success("SDK deleted");
@@ -160,7 +163,7 @@ fn main() -> Result<()> {
             }
         }
         CommandType::Update => {
-            let sim_version = args.msfs_version.context("msfs version is not present")?;
+            let sim_version = args.msfs_version.unwrap();
             let latest_release = get_latest_sdk_version(sim_version)?;
             let installed_version = get_installed_sdk_version(sim_version)?;
             if installed_version == Some(latest_release) {
@@ -195,13 +198,17 @@ fn main() -> Result<()> {
             print_success("SDK updated");
         }
         CommandType::Build => {
-            let sim_version = args.msfs_version.context("msfs version is not present")?;
+            let sim_version = args.msfs_version.unwrap();
+
+            // Locate SDK wasi-sysroot
             let sdk_path = get_sdk_path(sim_version)?;
             let wasi_sysroot_path = get_wasi_sysroot_path(sim_version)?
                 .as_os_str()
                 .to_str()
                 .context("couldn't convert osstr to str")?
                 .to_string();
+
+            // Construct the build flags
             let flags = [
                 "-Cstrip=symbols",
                 "-Clto",
@@ -227,27 +234,66 @@ fn main() -> Result<()> {
                 "-Clink-arg=--export=mchunkit_next",
                 "-Clink-arg=--export=get_pages_state",
             ];
-            command = Some(
-                Command::new("cargo")
-                    .args([
-                        "build",
-                        "--release",
-                        "--target",
-                        "wasm32-wasip1",
-                        // "--message-format=json",
-                    ])
-                    .env("WASI_SYSROOT", &wasi_sysroot_path)
-                    .env("MSFS_SDK", sdk_path)
-                    .env("RUSTFLAGS", flags.join(" "))
-                    .env("CFLAGS", format!("--sysroot={}", wasi_sysroot_path))
-                    .stdout(Stdio::piped())
-                    .spawn()?,
-            );
 
-            // let reader = BufReader::new(command.stdout.take().context("couldn't take stdout")?);
-            // for message in Message::parse_stream(reader) {
-            //     dbg!(message?);
-            // }
+            // Run build, capture output
+            let command = Command::new("cargo")
+                .args([
+                    "build",
+                    "--release",
+                    "--target",
+                    "wasm32-wasip1",
+                    "--message-format=json",
+                ])
+                .env("WASI_SYSROOT", &wasi_sysroot_path)
+                .env("MSFS_SDK", sdk_path)
+                .env("RUSTFLAGS", flags.join(" "))
+                .env("CFLAGS", format!("--sysroot={}", wasi_sysroot_path))
+                .stdout(Stdio::piped())
+                .spawn()?
+                .wait_with_output()?;
+
+            // Map the JSON stdout to structures
+            let messages = Message::parse_stream(Cursor::new(command.stdout))
+                .map(|x| x.unwrap())
+                .collect::<Vec<_>>();
+
+            // Ensure build finished and did so successfully
+            let Some(Message::BuildFinished(data)) = messages.last() else {
+                return Err(anyhow!("build didn't finish"));
+            };
+            if !data.success {
+                return Err(anyhow!("build did not finish successfully"));
+            }
+
+            // Find the output artifacts
+            let out_artifact = messages
+                .iter()
+                .filter_map(|x| {
+                    if let Message::CompilerArtifact(data) = x {
+                        Some(data)
+                    } else {
+                        None
+                    }
+                })
+                .last()
+                .ok_or(anyhow!("couldn't get out artifact"))?;
+
+            if out_artifact.filenames.len() > 1 {
+                return Err(anyhow!(
+                    "more than file outputted for artifact, unsure how to proceed"
+                ));
+            }
+
+            // Run wasm-opt
+            let path = out_artifact
+                .filenames
+                .get(0)
+                .ok_or(anyhow!("no filenames"))?;
+
+            OptimizationOptions::new_opt_level_1()
+                .add_pass(Pass::SignextLowering)
+                .enable_feature(Feature::BulkMemory)
+                .run(path, args.out.unwrap())?;
         }
 
         CommandType::Info => {
@@ -258,11 +304,6 @@ fn main() -> Result<()> {
                 print_info(&format_version_string(SimulatorVersion::Msfs2024)?);
             }
         }
-    }
-
-    if let Some(command) = command {
-        let output = command.wait_with_output().unwrap();
-        print!("{}", String::from_utf8_lossy(&output.stdout));
     }
 
     Ok(())
