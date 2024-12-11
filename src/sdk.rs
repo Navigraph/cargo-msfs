@@ -127,24 +127,22 @@ pub fn get_latest_sdk_release(version: SimulatorVersion) -> Result<GameVersion> 
 
 /// Gets the latest SDK version string for the given simulator
 ///
-/// Note: This difers from get_latest_sdk_release, as that returns a struct with extra data
+/// Note: This differs from get_latest_sdk_release, as that returns a struct with extra data
 ///
 /// * `version` - The simulator version to get for
 pub fn get_latest_sdk_version(version: SimulatorVersion) -> Result<String> {
+    let release_notes = get_latest_sdk_release(version)?.release_notes;
+
     // 2020's release notes are ordered from oldest to most recent, while 2024 is most recent to oldest
-    if version == SimulatorVersion::Msfs2020 {
-        Ok(get_latest_sdk_release(version)?
-            .release_notes
-            .last()
-            .context("no available sdk version")?
-            .to_string())
+    let latest = if version == SimulatorVersion::Msfs2020 {
+        release_notes.last()
     } else {
-        Ok(get_latest_sdk_release(version)?
-            .release_notes
-            .first()
-            .context("no available sdk version")?
-            .to_string())
+        release_notes.first()
     }
+    .context("no available sdk version")?
+    .to_string();
+
+    Ok(latest)
 }
 
 /// Gets the desired path for the given simulator
