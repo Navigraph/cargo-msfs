@@ -54,10 +54,16 @@ struct Args {
         ("command", "build"),
     ]))]
     msfs_version: Option<SimulatorVersion>,
+    /// The path to the crate to build. This is only required for the build command type
     #[arg(short, required_if_eq_any([
         ("command", "build"),
     ]))]
-    out: Option<String>,
+    in_folder: Option<String>,
+    /// The full path (including filename) to output the compiled WASM file. This is only required for the build command type
+    #[arg(short, required_if_eq_any([
+        ("command", "build"),
+    ]))]
+    out_wasm: Option<String>,
 }
 
 /// Formats a string containing the installed SDK version of a given sim
@@ -248,6 +254,7 @@ fn main() -> Result<()> {
                 .env("MSFS_SDK", sdk_path)
                 .env("RUSTFLAGS", flags.join(" "))
                 .env("CFLAGS", format!("--sysroot={}", wasi_sysroot_path))
+                .current_dir(args.in_folder.unwrap())
                 .stdout(Stdio::piped())
                 .spawn()?
                 .wait_with_output()?;
@@ -293,7 +300,7 @@ fn main() -> Result<()> {
             OptimizationOptions::new_opt_level_1()
                 .add_pass(Pass::SignextLowering)
                 .enable_feature(Feature::BulkMemory)
-                .run(path, args.out.unwrap())?;
+                .run(path, args.out_wasm.unwrap())?;
         }
 
         CommandType::Info => {
