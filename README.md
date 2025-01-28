@@ -51,25 +51,25 @@ cargo-msfs <COMMAND> [OPTIONS]
 ### Installing the SDK for MSFS 2020
 
 ```shell
-cargo-msfs install --msfs-version msfs2020
+cargo-msfs install msfs2020
 ```
 
 ### Removing the SDK for MSFS 2024
 
 ```shell
-cargo-msfs remove --msfs-version msfs2024
+cargo-msfs remove msfs2024
 ```
 
 ### Updating the SDK for MSFS 2020
 
 ```shell
-cargo-msfs update --msfs-version msfs2020
+cargo-msfs update msfs2020
 ```
 
 ### Building a crate for MSFS 2024
 
 ```shell
-cargo-msfs build --msfs-version msfs2024 -i /path/to/crate -o /path/to/output.wasm
+cargo-msfs build msfs2024 -i /path/to/crate -o /path/to/output.wasm
 ```
 
 ### Getting information on installed SDKs
