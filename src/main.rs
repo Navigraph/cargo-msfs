@@ -257,6 +257,7 @@ fn main() -> Result<()> {
                     "CFLAGS",
                     format!("--sysroot={}", wasi_sysroot_path.to_string_lossy()),
                 )
+                .envs(std::env::vars()) // Inherit current environment variables
                 .current_dir(args.in_folder.unwrap())
                 .stdout(Stdio::piped())
                 .spawn()?
