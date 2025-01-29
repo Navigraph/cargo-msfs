@@ -208,11 +208,7 @@ fn main() -> Result<()> {
 
             // Locate SDK wasi-sysroot
             let sdk_path = get_sdk_path(sim_version)?;
-            let wasi_sysroot_path = get_wasi_sysroot_path(sim_version)?
-                .as_os_str()
-                .to_str()
-                .context("couldn't convert osstr to str")?
-                .to_string();
+            let wasi_sysroot_path = get_wasi_sysroot_path(sim_version)?;
 
             // Construct the build flags
             let flags = [
@@ -223,11 +219,18 @@ fn main() -> Result<()> {
                 "-Clink-arg=-l",
                 "-Clink-arg=c",
                 &format!(
-                    "-Clink-arg={}\\lib\\wasm32-wasi\\libclang_rt.builtins-wasm32.a",
+                    "-Clink-arg={}",
                     wasi_sysroot_path
+                        .join("\\lib\\wasm32-wasi\\libclang_rt.builtins-wasm32.a")
+                        .to_string_lossy()
                 ),
                 "-Clink-arg=-L",
-                &format!("-Clink-arg={}\\lib\\wasm32-wasi", wasi_sysroot_path),
+                &format!(
+                    "-Clink-arg={}",
+                    wasi_sysroot_path
+                        .join("\\lib\\wasm32-wasi")
+                        .to_string_lossy()
+                ),
                 "-Clink-arg=--export-table",
                 "-Clink-arg=--allow-undefined",
                 "-Clink-arg=--export-dynamic",
@@ -253,7 +256,10 @@ fn main() -> Result<()> {
                 .env("WASI_SYSROOT", &wasi_sysroot_path)
                 .env("MSFS_SDK", sdk_path)
                 .env("RUSTFLAGS", flags.join(" "))
-                .env("CFLAGS", format!("--sysroot={}", wasi_sysroot_path))
+                .env(
+                    "CFLAGS",
+                    format!("--sysroot={}", wasi_sysroot_path.to_string_lossy()),
+                )
                 .current_dir(args.in_folder.unwrap())
                 .stdout(Stdio::piped())
                 .spawn()?
