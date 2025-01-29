@@ -95,7 +95,7 @@ fn format_version_string(simulator_version: SimulatorVersion) -> Result<String> 
         Ok(format!(
             "{} version {} is installed, latest available version is {}",
             root_string,
-            style(installed_version).bold(),
+            style(installed_version.trim_end()).bold(),
             style(get_latest_sdk_version(simulator_version)?).bold()
         ))
     } else {

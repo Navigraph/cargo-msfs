@@ -62,7 +62,7 @@ pub struct DownloadsMenuOption {
 pub struct GameVersion {
     /// A hashmap of menu titles to URLs (among other things, but we only care about URLs here)
     pub downloads_menu: HashMap<String, DownloadsMenuOption>,
-    /// Vec of SDK versions. Latest is always the last entry
+    /// Vec of SDK versions. In 2020, the last entry is latest, while in 2024 it is the oldest
     pub release_notes: Vec<String>,
 }
 /// The manifest of available SDK versions
@@ -230,10 +230,17 @@ where
         .value
         .as_ref()
         .context("can't find core installer download url")?;
-    let release_number = latest_sdk
-        .release_notes
-        .last()
-        .context("couldn't get latest release number")?;
+    let release_number = if version == SimulatorVersion::Msfs2020 {
+        latest_sdk
+            .release_notes
+            .last()
+            .context("couldn't get latest release number")?
+    } else {
+        latest_sdk
+            .release_notes
+            .first()
+            .context("couldn't get latest release number")?
+    };
 
     // Download the installer
     let mut response = reqwest::blocking::get(format!(
