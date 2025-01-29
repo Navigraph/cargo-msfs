@@ -248,7 +248,6 @@ fn main() -> Result<()> {
                     "--target",
                     "wasm32-wasip1",
                     "--message-format=json",
-                    "--verbose",
                 ])
                 .env("WASI_SYSROOT", wasi_sysroot_path.as_os_str())
                 .env("MSFS_SDK", sdk_path)
