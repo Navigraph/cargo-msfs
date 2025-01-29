@@ -14,7 +14,19 @@
 
 You can install the utility by running `cargo install --git https://github.com/navigraph/cargo-msfs`
 
+Clang 17 must also be installed. Versions greater than 17 do not work with MSFS.
+
 ## Usage
+
+### `Cargo.toml`
+
+Ensure your `Cargo.toml` has the following lines:
+
+```toml
+[profile.release]
+lto = true
+strip = true
+```
 
 ### Commands
 

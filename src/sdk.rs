@@ -24,8 +24,15 @@ const MANIFEST_FILE: &str = "sdk.json";
 const CORE_INSTALLER_KEY: &str = "SDK Installer (Core)";
 
 // The folder in the SDK MSI to extract from
+#[cfg(target_os = "windows")]
 const MSFS2020_SDK_EXTRACT_FROM: &str = ".\\MSFS SDK\\";
+#[cfg(not(target_os = "windows"))]
+const MSFS2020_SDK_EXTRACT_FROM: &str = "./MSFS SDK/";
+
+#[cfg(target_os = "windows")]
 const MSFS2024_SDK_EXTRACT_FROM: &str = ".\\MSFS 2024 SDK\\";
+#[cfg(not(target_os = "windows"))]
+const MSFS2024_SDK_EXTRACT_FROM: &str = "./MSFS 2024 SDK/";
 
 // Local destination folder names for the downloaded SDK
 const MSFS2020_FOLDER_NAME: &str = "msfs2020";
@@ -35,7 +42,10 @@ const MSFS2024_FOLDER_NAME: &str = "msfs2024";
 const VERSION_FILE_NAME: &str = "version.txt";
 
 // WASI sysroot location, relative to the SDK installation. Valid for both SDK editions
-const WASI_SYSROOT_PATH: &str = "WASM\\wasi-sysroot";
+#[cfg(target_os = "windows")]
+const WASI_SYSROOT_PATH: &str = "./WASM\\wasi-sysroot";
+#[cfg(not(target_os = "windows"))]
+const WASI_SYSROOT_PATH: &str = "./WASM/wasi-sysroot";
 
 // Configuration
 const CHUNK_SIZE: u64 = 1024;

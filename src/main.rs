@@ -20,6 +20,16 @@ use wasm_opt::{Feature, OptimizationOptions, Pass};
 /// SDK info and download utility
 mod sdk;
 
+#[cfg(target_os = "windows")]
+const BUILT_INS_PATH: &str = ".\\lib\\wasm32-wasi\\libclang_rt.builtins-wasm32.a";
+#[cfg(not(target_os = "windows"))]
+const BUILT_INS_PATH: &str = "./lib/wasm32-wasi/libclang_rt.builtins-wasm32.a";
+
+#[cfg(target_os = "windows")]
+const WASI_PATH: &str = ".\\lib\\wasm32-wasi";
+#[cfg(not(target_os = "windows"))]
+const WASI_PATH: &str = "./lib/wasm32-wasi";
+
 /// A specific version of MSFS
 #[derive(Debug, PartialEq, Eq, Clone, Copy, ValueEnum)]
 enum SimulatorVersion {
@@ -111,19 +121,6 @@ fn print_success(message: &str) {
     println!("{} {}", style("[SUCCESS]").green(), message);
 }
 
-/// Logs a step
-fn print_step(step_number: u8, num_steps: u8, message: &str) {
-    if step_number == num_steps {
-        println!("{} {}", style("{step_number}/{num_steps}").green(), message);
-    } else {
-        println!(
-            "{} {}",
-            style("{step_number}/{num_steps}").yellow(),
-            message
-        );
-    }
-}
-
 fn main() -> Result<()> {
     let args = Args::parse();
 
@@ -206,10 +203,14 @@ fn main() -> Result<()> {
         CommandType::Build => {
             let sim_version = args.msfs_version.unwrap();
 
+            // Assure we downloaded the SDK
+            if get_installed_sdk_version(sim_version)?.is_none() {
+                return Err(anyhow!("SDK not installed"));
+            }
+
             // Locate SDK wasi-sysroot
             let sdk_path = get_sdk_path(sim_version)?;
             let wasi_sysroot_path = get_wasi_sysroot_path(sim_version)?;
-
             // Construct the build flags
             let flags = [
                 "-Cstrip=symbols",
@@ -220,16 +221,12 @@ fn main() -> Result<()> {
                 "-Clink-arg=c",
                 &format!(
                     "-Clink-arg={}",
-                    wasi_sysroot_path
-                        .join("\\lib\\wasm32-wasi\\libclang_rt.builtins-wasm32.a")
-                        .to_string_lossy()
+                    wasi_sysroot_path.join(BUILT_INS_PATH).to_string_lossy()
                 ),
                 "-Clink-arg=-L",
                 &format!(
                     "-Clink-arg={}",
-                    wasi_sysroot_path
-                        .join("\\lib\\wasm32-wasi")
-                        .to_string_lossy()
+                    wasi_sysroot_path.join(WASI_PATH).to_string_lossy()
                 ),
                 "-Clink-arg=--export-table",
                 "-Clink-arg=--allow-undefined",
@@ -243,7 +240,6 @@ fn main() -> Result<()> {
                 "-Clink-arg=--export=mchunkit_next",
                 "-Clink-arg=--export=get_pages_state",
             ];
-
             // Run build, capture output
             let command = Command::new("cargo")
                 .args([
@@ -252,8 +248,9 @@ fn main() -> Result<()> {
                     "--target",
                     "wasm32-wasip1",
                     "--message-format=json",
+                    "--verbose",
                 ])
-                .env("WASI_SYSROOT", &wasi_sysroot_path)
+                .env("WASI_SYSROOT", wasi_sysroot_path.as_os_str())
                 .env("MSFS_SDK", sdk_path)
                 .env("RUSTFLAGS", flags.join(" "))
                 .env(
@@ -275,6 +272,20 @@ fn main() -> Result<()> {
                 return Err(anyhow!("build didn't finish"));
             };
             if !data.success {
+                // Print out the compiler messages to guide user on what went wrong
+                let compiler_messages = messages.iter().filter_map(|m| {
+                    if let Message::CompilerMessage(compiler_message) = m {
+                        Some(compiler_message)
+                    } else {
+                        None
+                    }
+                });
+
+                for compiler_message in compiler_messages {
+                    if let Some(message) = &compiler_message.message.rendered {
+                        println!("{message}");
+                    }
+                }
                 return Err(anyhow!("build did not finish successfully"));
             }
 
@@ -293,7 +304,7 @@ fn main() -> Result<()> {
 
             if out_artifact.filenames.len() > 1 {
                 return Err(anyhow!(
-                    "more than file outputted for artifact, unsure how to proceed"
+                    "more than one file outputted for artifact, unsure how to proceed"
                 ));
             }
 
