@@ -36,6 +36,7 @@ WORKDIR /cargo-msfs
 COPY --from=builder /build/target/release/cargo-msfs .
 RUN chmod +x cargo-msfs
 
-ENTRYPOINT ["/cargo-msfs/cargo-msfs"]
+# Add cargo-msfs to PATH
+ENV PATH="/cargo-msfs:${PATH}"
 
 LABEL org.opencontainers.image.source=https://github.com/Navigraph/cargo-msfs

@@ -11,4 +11,5 @@ jobs:
         uses: Navigraph/cargo-msfs@v1
         with:
           token: ${{ secrets.BOT_TOKEN }}
-          args: info
+          run: |
+            cargo-msfs info
