@@ -1,0 +1,14 @@
+on: [workflow_dispatch]
+
+name: Run cargo-msfs
+
+jobs:
+  cargo_job:
+    runs-on: ubuntu-latest
+    name: Run cargo-msfs
+    steps:
+      - name: Run cargo-msfs
+        uses: Navigraph/cargo-msfs@v1
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+          args: info

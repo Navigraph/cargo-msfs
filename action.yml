@@ -1,0 +1,22 @@
+name: "Cargo MSFS"
+description: "Run cargo-msfs from docker container"
+
+inputs:
+  token:
+    required: true
+    description: "GitHub token, used to access the container image"
+
+  args:
+    description: "Arguments to pass to cargo-msfs"
+    default: "info"
+
+runs:
+  using: composite
+  steps:
+    - name: Sign in to GitHub Container Registry
+      shell: bash
+      run: echo "${{ inputs.token }}" | docker login ghcr.io -u navigraph-bot --password-stdin
+
+    - name: Run cargo-msfs
+      shell: bash
+      run: docker run -v $PWD:/repo-content -w /repo-content ghcr.io/navigraph/cargo-msfs-bin:latest ${{ inputs.args }}

@@ -1,4 +1,3 @@
-
 FROM rust:1.84 AS builder
 
 WORKDIR /build
@@ -15,12 +14,10 @@ RUN cargo install --path .
 # Build cargo-msfs binary
 RUN cargo build --release
 
-
-#################
-# Compact image #
-#################
+# --------------------------------------------
+# Compact image without rust deps and extras
+# --------------------------------------------
 FROM debian:bookworm-slim
-
 
 # Install llvm deps
 RUN apt update && \
@@ -39,7 +36,6 @@ WORKDIR /cargo-msfs
 COPY --from=builder /build/target/release/cargo-msfs .
 RUN chmod +x cargo-msfs
 
-# Set entrypoint
-ENTRYPOINT ["./cargo-msfs"]
+ENTRYPOINT ["/cargo-msfs/cargo-msfs"]
 
 LABEL org.opencontainers.image.source=https://github.com/Navigraph/cargo-msfs
