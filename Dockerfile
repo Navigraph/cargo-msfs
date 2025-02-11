@@ -4,7 +4,7 @@ WORKDIR /build
 
 # Install deps
 RUN apt update && \
-    apt install -y --no-install-recommends lsb-release wget software-properties-common gnupg g++ build-essential openssl
+    apt install -y --no-install-recommends lsb-release wget software-properties-common gnupg g++ build-essential openssl gcc-multilib
 
 # Install llvm/clang
 RUN wget https://apt.llvm.org/llvm.sh && \
