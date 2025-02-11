@@ -12,9 +12,11 @@ console = "0.15.8"
 directories = "5.0.1"
 indicatif = "0.17.8"
 msi = { git = "https://github.com/pepperoni505/rust-msi" } # TODO: put this back to normal msi crate after PR is merged
-openssl = { version = "0.10", features = ["vendored"] }
 reqwest = { version = "0.12.8", features = ["blocking"] }
 serde = { version = "1.0.213", features = ["derive"] }
 serde_json = "1.0.132"
 wasm-opt = "0.116.1"
 zip = "2.2.0"
+
+[target.'cfg(unix)'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
