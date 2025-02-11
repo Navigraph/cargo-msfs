@@ -257,7 +257,7 @@ fn main() -> Result<()> {
                     format!("--sysroot={}", wasi_sysroot_path.to_string_lossy()),
                 )
                 .envs(std::env::vars()) // Inherit current environment variables
-                .current_dir(args.in_folder.unwrap())
+                .current_dir(args.in_folder.unwrap().replace("\\", "/"))
                 .stdout(Stdio::piped())
                 .spawn()?
                 .wait_with_output()?;
@@ -317,7 +317,7 @@ fn main() -> Result<()> {
             OptimizationOptions::new_opt_level_1()
                 .add_pass(Pass::SignextLowering)
                 .enable_feature(Feature::BulkMemory)
-                .run(path, args.out_wasm.unwrap())?;
+                .run(path, args.out_wasm.unwrap().replace("\\", "/"))?;
         }
 
         CommandType::Info => {
