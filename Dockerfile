@@ -1,27 +1,10 @@
-FROM rust:1.84 AS builder
+FROM rust:1.84-slim-bookworm
 
 WORKDIR /build
 
-COPY src src
-COPY Cargo.toml Cargo.toml
-
-# Install rust target
-RUN rustup target install wasm32-wasip1
-
-# Install cargo-msfs
-RUN cargo install --path .
-
-# Build cargo-msfs binary
-RUN cargo build --release
-
-# --------------------------------------------
-# Compact image without rust deps and extras
-# --------------------------------------------
-FROM debian:bookworm-slim
-
-# Install llvm deps
+# Install deps
 RUN apt update && \
-    apt install -y --no-install-recommends lsb-release wget software-properties-common gnupg 
+    apt install -y --no-install-recommends lsb-release wget software-properties-common gnupg g++ build-essential openssl
 
 # Install llvm/clang
 RUN wget https://apt.llvm.org/llvm.sh && \
@@ -31,12 +14,14 @@ RUN wget https://apt.llvm.org/llvm.sh && \
     ln -s $(which llvm-ar-17) /usr/bin/llvm-ar && \
     rm llvm.sh
 
-WORKDIR /cargo-msfs
+# Install rust target
+RUN rustup target install wasm32-wasip1
 
-COPY --from=builder /build/target/release/cargo-msfs .
-RUN chmod +x cargo-msfs
+# Copy over files
+COPY src src
+COPY Cargo.toml Cargo.toml
 
-# Add cargo-msfs to PATH
-ENV PATH="/cargo-msfs:${PATH}"
+# Build and install cargo-msfs binary
+RUN cargo install --path .
 
 LABEL org.opencontainers.image.source=https://github.com/Navigraph/cargo-msfs
