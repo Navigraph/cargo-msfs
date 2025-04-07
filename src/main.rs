@@ -15,6 +15,7 @@ use sdk::{
     get_installed_sdk_version, get_latest_sdk_version, get_sdk_path, get_wasi_sysroot_path,
     install_latest_sdk, remove_sdk_version,
 };
+use serde::Serialize;
 use wasm_opt::{Feature, OptimizationOptions, Pass};
 
 /// SDK info and download utility
@@ -31,7 +32,7 @@ const WASI_PATH: &str = ".\\lib\\wasm32-wasi";
 const WASI_PATH: &str = "./lib/wasm32-wasi";
 
 /// A specific version of MSFS
-#[derive(Debug, PartialEq, Eq, Clone, Copy, ValueEnum)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, ValueEnum, Serialize)]
 enum SimulatorVersion {
     Msfs2020,
     Msfs2024,
@@ -74,6 +75,9 @@ struct Args {
         ("command", "build"),
     ]))]
     out_wasm: Option<String>,
+    /// Format the output as JSON to parse programmatically
+    #[arg(short)]
+    formatted_output: bool,
 }
 
 /// Formats a string containing the installed SDK version of a given sim
@@ -321,11 +325,47 @@ fn main() -> Result<()> {
         }
 
         CommandType::Info => {
-            if args.msfs_version == None || args.msfs_version == Some(SimulatorVersion::Msfs2020) {
-                print_info(&format_version_string(SimulatorVersion::Msfs2020)?);
+            #[derive(Serialize)]
+            struct InstalledVersion {
+                sim: SimulatorVersion,
+                up_to_date: bool,
+                installed: Option<String>,
+                latest: String,
             }
-            if args.msfs_version == None || args.msfs_version == Some(SimulatorVersion::Msfs2024) {
-                print_info(&format_version_string(SimulatorVersion::Msfs2024)?);
+
+            #[derive(Serialize)]
+            struct InstallInfo {
+                versions: Vec<InstalledVersion>,
+            }
+
+            // List of supported simulators
+            let simulators = [SimulatorVersion::Msfs2020, SimulatorVersion::Msfs2024];
+
+            if args.formatted_output {
+                let mut versions = vec![];
+
+                for &sim in &simulators {
+                    // Process only if no version is specified or if the current one is requested.
+                    if args.msfs_version.is_none() || args.msfs_version == Some(sim) {
+                        let installed = get_installed_sdk_version(sim)?;
+                        let latest = get_latest_sdk_version(sim)?;
+                        versions.push(InstalledVersion {
+                            sim,
+                            up_to_date: installed == Some(latest.clone()),
+                            installed,
+                            latest,
+                        });
+                    }
+                }
+
+                let info = InstallInfo { versions };
+                println!("{}", serde_json::to_string(&info)?);
+            } else {
+                for &sim in &simulators {
+                    if args.msfs_version.is_none() || args.msfs_version == Some(sim) {
+                        print_info(&format_version_string(sim)?);
+                    }
+                }
             }
         }
     }
