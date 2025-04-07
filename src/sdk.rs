@@ -184,7 +184,7 @@ pub fn get_installed_sdk_version(version: SimulatorVersion) -> Result<Option<Str
             Ok(mut file) => {
                 let mut version = String::new();
                 file.read_to_string(&mut version)?;
-                Some(version)
+                Some(version.trim().to_owned())
             }
             Err(_) => None,
         },
