@@ -20,6 +20,7 @@ RUN rustup target install wasm32-wasip1
 # Copy over files
 COPY src src
 COPY Cargo.toml Cargo.toml
+COPY Cargo.lock Cargo.lock
 
 # Build and install cargo-msfs binary
 RUN cargo install --path .
