@@ -1,4 +1,4 @@
-FROM rust:1.84-slim-bookworm
+FROM rust:1.90-slim-bookworm
 
 WORKDIR /build
 
